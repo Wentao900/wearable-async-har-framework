@@ -1,0 +1,1 @@
+A review-and-framework repo for asynchronous multimodal fusion in wearable human activity recognition, with a CPU-friendly synthetic baseline and a conservative PAMAP2 starter path.

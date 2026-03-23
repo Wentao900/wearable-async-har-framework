@@ -1,0 +1,8 @@
+wearable-har
+multimodal-time-series
+human-activity-recognition
+sensor-fusion
+asynchronous-learning
+pytorch
+pamap2
+research-framework

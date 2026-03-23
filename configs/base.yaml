@@ -1,0 +1,37 @@
+project:
+  name: wearable-async-har-framework
+
+data:
+  dataset: synthetic
+  root: data/synthetic
+  window_size: 128
+  stride: 64
+  modalities:
+    - accelerometer
+    - gyroscope
+  simulate_asynchrony: true
+  timestamp_jitter_ms: 5
+  packet_loss_prob: 0.05
+  seed: 7
+
+model:
+  encoder: tcn
+  hidden_dim: 64
+  fusion: gated
+  use_timestamp_embedding: false
+  use_missingness_mask: true
+  num_classes: 4
+
+training:
+  batch_size: 16
+  epochs: 3
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  modality_dropout_prob: 0.0
+
+runtime:
+  device: cpu
+  num_workers: 0
+
+logging:
+  output_dir: outputs/default

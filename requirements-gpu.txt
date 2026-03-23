@@ -1,0 +1,9 @@
+-r requirements.txt
+
+# PyTorch CUDA 11.8 wheels for NVIDIA GPUs such as RTX 4090D.
+# Install with:
+#   pip install -r requirements-gpu.txt --extra-index-url https://download.pytorch.org/whl/cu118
+# or first install torch/torchvision/torchaudio from the cu118 index, then install requirements.txt.
+torch==2.2.2
+torchvision==0.17.2
+torchaudio==2.2.2

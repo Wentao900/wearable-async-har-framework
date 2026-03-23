@@ -4,7 +4,7 @@ project:
 data:
   dataset: pamap2
   root: data/PAMAP2
-  # Backward-compatible default GPU config. Prefer pamap2-gpu-safe.yaml or pamap2-gpu-fast.yaml.
+  # Keep the same windowing as the CPU starter config.
   window_size: 256
   stride: 128
   modalities:
@@ -17,6 +17,7 @@ data:
 
 model:
   encoder: tcn
+  # Conservative starter setting for a first clean 4090D run.
   hidden_dim: 128
   fusion: gated
   alignment_strategy: nearest-neighbor
@@ -26,6 +27,7 @@ model:
   num_classes: 13
 
 training:
+  # Safer on memory, easier to start with.
   batch_size: 128
   epochs: 20
   learning_rate: 0.001
@@ -37,4 +39,4 @@ runtime:
   num_workers: 8
 
 logging:
-  output_dir: outputs/pamap2-gpu
+  output_dir: outputs/pamap2-gpu-safe

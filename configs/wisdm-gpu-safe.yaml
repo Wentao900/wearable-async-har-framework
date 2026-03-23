@@ -4,7 +4,6 @@ project:
 data:
   dataset: wisdm
   root: data/WISDM
-  # Backward-compatible default GPU config. Prefer wisdm-gpu-safe.yaml or wisdm-gpu-fast.yaml.
   window_size: 128
   stride: 64
   modalities:
@@ -12,6 +11,7 @@ data:
 
 model:
   encoder: tcn
+  # Conservative starter point for a single-modality GPU run.
   hidden_dim: 128
   fusion: mean
   alignment_strategy: nearest-neighbor
@@ -32,4 +32,4 @@ runtime:
   num_workers: 8
 
 logging:
-  output_dir: outputs/wisdm-gpu
+  output_dir: outputs/wisdm-gpu-safe

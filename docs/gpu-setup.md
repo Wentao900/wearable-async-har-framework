@@ -1,14 +1,19 @@
 # GPU Setup Guide
 
-This project can be run on a machine with **NVIDIA RTX 4090D** and **CUDA 11.8**.
+This project includes a **starter GPU path** for **NVIDIA RTX 4090D + CUDA 11.8** machines.
+
+The important word is **starter**:
+- these configs are meant to be practical and easy to run,
+- they are not sold as tuned benchmark settings,
+- they are a clean place to begin iteration.
 
 ## Recommended environment
 
 - Python: 3.10 or 3.11
-- CUDA: 11.8
-- PyTorch: build targeting cu118
+- NVIDIA driver: compatible with CUDA 11.8 wheels
+- PyTorch: CUDA 11.8 (`cu118`) build
 
-## 1. Create environment
+## 1. Create a virtual environment
 
 ```bash
 python3 -m venv .venv
@@ -16,19 +21,26 @@ source .venv/bin/activate
 pip install --upgrade pip
 ```
 
-## 2. Install PyTorch for CUDA 11.8
+## 2. Install dependencies
+
+Simplest route:
 
 ```bash
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install -r requirements-gpu.txt --extra-index-url https://download.pytorch.org/whl/cu118
 ```
 
-Then install the remaining dependencies:
+That installs:
+- the normal project dependencies from `requirements.txt`,
+- CUDA 11.8 PyTorch wheels from the PyTorch index.
+
+If you prefer the older two-step method, this also works:
 
 ```bash
+pip install torch==2.2.2 torchvision==0.17.2 torchaudio==2.2.2 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 ```
 
-## 3. Verify GPU visibility
+## 3. Verify that CUDA is visible
 
 ```bash
 python3 - <<'PY'
@@ -41,52 +53,92 @@ if torch.cuda.is_available():
 PY
 ```
 
-Expected: CUDA available = True, and the GPU name should mention your RTX 4090D.
+Expected result:
+- `cuda available: True`
+- GPU name includes your RTX 4090D
 
-## 4. Run training
+## 4. Available GPU presets
 
 ### PAMAP2
+- `configs/pamap2-gpu-safe.yaml`
+- `configs/pamap2-gpu-fast.yaml`
+
+### WISDM
+- `configs/wisdm-gpu-safe.yaml`
+- `configs/wisdm-gpu-fast.yaml`
+
+The old default-style GPU configs remain for compatibility:
+- `configs/pamap2-gpu.yaml`
+- `configs/wisdm-gpu.yaml`
+
+## 5. One-command GPU runs
+
+### PAMAP2
+
 ```bash
-python3 scripts/train.py --config configs/pamap2-gpu.yaml
+bash scripts/run_pamap2_gpu.sh safe
+bash scripts/run_pamap2_gpu.sh fast
 ```
 
 ### WISDM
+
 ```bash
-python3 scripts/train.py --config configs/wisdm-gpu.yaml
+bash scripts/run_wisdm_gpu.sh safe
+bash scripts/run_wisdm_gpu.sh fast
 ```
 
-## 5. Notes on current configs
+If no mode is given, the scripts default to `safe`.
 
-These GPU configs are still **starter configs**, not tuned SOTA settings.
-They mainly do three things:
-- switch runtime to `cuda`
-- increase `batch_size`
-- increase worker count and training budget
+## 6. Direct commands
 
-If you hit out-of-memory errors, reduce:
-- `training.batch_size`
-- `model.hidden_dim`
-- or `data.window_size`
+```bash
+python3 scripts/train.py --config configs/pamap2-gpu-safe.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-fast.yaml
+python3 scripts/train.py --config configs/wisdm-gpu-safe.yaml
+python3 scripts/train.py --config configs/wisdm-gpu-fast.yaml
+```
 
-## 6. Common issues
+## 7. Choosing between safe and fast
+
+Use **safe** when:
+- this is the first run on a new machine,
+- you want lower OOM risk,
+- you are debugging dataset paths or loader behavior.
+
+Use **fast** when:
+- the safe config already works,
+- you have some VRAM headroom,
+- you want higher throughput and are okay with more aggressive settings.
+
+Again: these are **reasonable starting points**, not tuned final answers.
+
+## 8. If you hit problems
 
 ### CUDA not available
 Usually means one of:
-- wrong PyTorch build installed (CPU-only wheel)
-- NVIDIA driver mismatch
-- CUDA runtime not visible in the environment
+- CPU-only PyTorch got installed,
+- the wrong wheel index was used,
+- the driver/runtime stack is mismatched,
+- the Python environment is not the one you think it is.
 
 ### Out of memory
 Try:
-- lowering batch size (e.g. 128 -> 64 -> 32)
-- lowering hidden_dim (128 -> 64)
-- reducing worker count if data loading is heavy
+- switching from `fast` to `safe`,
+- reducing `training.batch_size`,
+- reducing `model.hidden_dim`,
+- reducing `data.window_size`.
 
 ### Slow data loading
-Try adjusting:
-- `runtime.num_workers`
-- dataset storage location (SSD preferred)
+Try:
+- lowering or raising `runtime.num_workers`,
+- making sure the dataset is on SSD storage,
+- starting with the `safe` preset before pushing workers higher.
 
-## 7. Honest caveat
+## 9. Honest caveat
 
-The repository now supports GPU execution, but the dataset adapters and benchmark protocols are still **starter paths**. GPU makes training feasible; it does not magically turn the preprocessing and evaluation protocol into a finalized paper setup.
+GPU support here makes the scaffold more usable on a modern NVIDIA machine. It does **not** mean:
+- the dataset preprocessing is finalized,
+- the evaluation protocol is benchmark-complete,
+- the included hyperparameters are tuned for best accuracy.
+
+Treat the configs as sensible launch points, then adapt them to your actual workload.

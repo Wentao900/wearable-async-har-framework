@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 
 from .pamap2 import PAMAP2Dataset
 from .synthetic import SyntheticWearableDataset, collate_sensor_batch, create_synthetic_dataloaders
+from .wisdm import WISDMDataset
 
 
 class DatasetConfigurationError(RuntimeError):

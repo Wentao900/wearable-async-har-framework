@@ -13,6 +13,8 @@ model:
   encoder: tcn
   hidden_dim: 128
   fusion: mean
+  alignment_strategy: nearest-neighbor
+  reference_timeline_strategy: densest
   use_timestamp_embedding: true
   use_missingness_mask: true
   num_classes: 6

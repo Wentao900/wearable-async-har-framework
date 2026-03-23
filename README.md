@@ -9,6 +9,7 @@ It already includes:
 - a CPU-friendly synthetic training path,
 - a minimal PyTorch baseline,
 - conservative starter adapters for **PAMAP2** and **WISDM**,
+- a configurable async alignment baseline,
 - review/framework documents for evolving the repo into a stronger benchmark or paper codebase later.
 
 It does **not** yet claim a finalized benchmark pipeline.
@@ -56,11 +57,30 @@ The repo includes:
 - a PAMAP2 dataset path under `src/data/pamap2.py`
 - a WISDM dataset path under `src/data/wisdm.py`
 - a small dataset factory under `src/data/factory.py`
-- a simple mask-aware alignment stub
+- a timestamp-aware nearest-neighbor alignment baseline
 - per-modality PyTorch encoders
 - a small fusion block (`mean` or `gated`)
 - a classifier head
 - a train entry script that reads YAML configs
+
+## Alignment v1: what it actually does
+
+The current async alignment module is intentionally modest.
+It is a **baseline**, not a claimed research contribution.
+
+Given per-modality `values`, `timestamps`, and `masks`, it:
+- chooses a reference timeline,
+- aligns every modality onto that timeline with **nearest-neighbor timestamp matching**,
+- ignores missing source samples,
+- zero-fills reference positions that cannot be aligned,
+- returns alignment metadata such as the selected reference modality, aligned masks, source indices, and valid ratios.
+
+Supported reference timeline strategies:
+- `densest` → choose the modality with the highest observed density in the batch
+- `first` → choose the first configured modality
+- a modality name such as `accelerometer` or `gyroscope`
+
+This keeps irregular timing and missingness explicit while staying lightweight enough for CPU smoke runs.
 
 ## Quick start
 
@@ -147,12 +167,23 @@ The training path currently supports:
 - `data.dataset: pamap2`
 - `data.dataset: wisdm`
 
+The alignment module is configurable from YAML instead of being hard-coded, which makes simple ablations possible without touching Python source.
+
+Example:
+
+```yaml
+model:
+  alignment_strategy: nearest-neighbor
+  reference_timeline_strategy: densest
+```
+
 ## Tests
 
 Run the smoke tests with:
 
 ```bash
 python3 -m pytest tests/test_smoke.py
+python3 -m pytest tests/test_alignment.py
 ```
 
 These tests cover:
@@ -161,13 +192,14 @@ These tests cover:
 - a tiny fake-PAMAP2 dataloader smoke run
 - honest failure when PAMAP2 data is missing
 - honest failure when WISDM data is missing
+- alignment reference selection and mask-aware nearest-neighbor behavior
 
 ## Suggested next steps
 
 1. Verify and refine the PAMAP2 column mapping in `src/data/pamap2.py`
 2. Verify the WISDM parsing assumptions against the exact raw release being used
 3. Add subject-wise split controls instead of the current simple file split
-4. Replace the alignment stub with a real asynchronous alignment method
+4. Expose more alignment options such as fixed-grid or union-grid baselines
 5. Expand the baseline family (e.g. GRU / transformer / missing-modality robustness)
 6. Add proper experiment tracking and dataset-specific evaluation
 

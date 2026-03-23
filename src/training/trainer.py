@@ -23,6 +23,8 @@ class Trainer:
             num_classes=int(model_cfg.get("num_classes", 4)),
             encoder_name=model_cfg.get("encoder", "tcn"),
             fusion_mode=model_cfg.get("fusion", "gated"),
+            alignment_strategy=model_cfg.get("alignment_strategy", "nearest-neighbor"),
+            reference_timeline_strategy=model_cfg.get("reference_timeline_strategy", "densest"),
         ).to(self.device)
         training_cfg = config.get("training", {})
         self.criterion = torch.nn.CrossEntropyLoss()

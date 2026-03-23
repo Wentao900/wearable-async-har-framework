@@ -18,9 +18,14 @@ class WearableBaselineModel(nn.Module):
         num_classes: int,
         encoder_name: str = "tcn",
         fusion_mode: str = "gated",
+        alignment_strategy: str = "nearest-neighbor",
+        reference_timeline_strategy: str = "densest",
     ) -> None:
         super().__init__()
-        self.alignment = AsyncAlignmentModule()
+        self.alignment = AsyncAlignmentModule(
+            strategy=alignment_strategy,
+            reference_mode=reference_timeline_strategy,
+        )
         self.encoder_bank = ModalityEncoderBank(
             channels_per_modality=channels_per_modality,
             encoder_name=encoder_name,
@@ -34,7 +39,9 @@ class WearableBaselineModel(nn.Module):
         )
 
     def forward(self, batch: Dict[str, Dict[str, torch.Tensor] | torch.Tensor]) -> Dict[str, torch.Tensor | Dict[str, object]]:
-        alignment_output = self.alignment({"values": batch["values"], "masks": batch["masks"]})
+        alignment_output = self.alignment(
+            {"values": batch["values"], "timestamps": batch["timestamps"], "masks": batch["masks"]}
+        )
         modality_features = self.encoder_bank(alignment_output.aligned_features)
         fused = self.fusion(modality_features)
         logits = self.classifier(fused)

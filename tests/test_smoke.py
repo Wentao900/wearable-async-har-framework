@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -138,3 +139,33 @@ def test_train_script_reports_missing_wisdm_data(tmp_path):
 
     assert result.returncode == 1
     assert "WISDM dataset file was not found" in result.stderr
+
+
+def test_train_script_writes_runtime_info_and_honors_output_override(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    output_dir = tmp_path / "custom-run"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(root / "scripts" / "train.py"),
+            "--config",
+            str(root / "configs" / "base.yaml"),
+            "--output-dir",
+            str(output_dir),
+        ],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0
+    runtime_info = json.loads((output_dir / "runtime_info.json").read_text(encoding="utf-8"))
+    results = json.loads((output_dir / "results.json").read_text(encoding="utf-8"))
+
+    assert runtime_info["status"] == "completed"
+    assert Path(runtime_info["output_dir"]) == output_dir.resolve()
+    assert runtime_info["config_summary"]["dataset"] == "synthetic"
+    assert runtime_info["torch"]["version"] is not None
+    assert results["status"] == "completed"

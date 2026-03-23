@@ -1,41 +1,41 @@
 # wearable-async-har-framework
 
-A research scaffold for **asynchronous multimodal fusion in wearable human activity recognition (HAR)**.
+A small, honest research scaffold for **asynchronous multimodal fusion in wearable human activity recognition (HAR)**.
 
 ## What this repo is
 
-This repository is an **early, honest framework** for exploring async wearable HAR:
+This repository is an **early framework**, not a polished benchmark release. It gives you:
 - a runnable synthetic smoke path,
 - starter dataset adapters for **PAMAP2** and **WISDM**,
-- a small PyTorch baseline with timestamp-aware alignment,
+- a lightweight PyTorch baseline with timestamp-aware alignment,
 - CPU and GPU example configs,
-- lightweight scripts and notes for getting experiments off the ground.
+- simple scripts for launching and logging experiments.
 
-It is **not** yet a finalized benchmark implementation, and it does **not** claim tuned or paper-ready results.
+It is meant to help you get experiments moving without pretending the recipes are already tuned or paper-ready.
 
-## What "GPU support" means here
+## What “GPU support” means here
 
-This repo now includes a practical GPU starter path for **RTX 4090D + CUDA 11.8** environments:
-- `requirements-gpu.txt` for a simple CUDA 11.8 Python install,
-- one-command run scripts for PAMAP2 and WISDM,
-- dual GPU config presets:
-  - **safe** = conservative starting point,
-  - **fast** = more aggressive throughput-oriented starting point.
+This repo includes a practical GPU starter path for **CUDA 11.8 / RTX-class NVIDIA machines**:
+- `requirements-gpu.txt` for a straightforward install,
+- **safe** and **fast** GPU presets for PAMAP2 and WISDM,
+- dataset-specific helper scripts,
+- a generic background launcher for long runs,
+- automatic runtime metadata logging into each run directory.
 
-These are **starter configs**, not tuned SOTA recipes. They are meant to get a 4090D machine running cleanly, not to pretend a benchmark has already been optimized.
+These are **starter configs**, not claims of optimal performance.
 
 ## Repo layout
 
 - `configs/` — YAML experiment configs for CPU and GPU runs
 - `docs/` — setup notes, framework docs, experiment ideas, release notes
 - `scripts/` — training and convenience scripts
-- `src/` — data adapters, model code, training loop, config loader
+- `src/` — data adapters, model code, training loop, config + runtime helpers
 - `tests/` — smoke tests
 
 ## Important honesty notes
 
 ### Synthetic path
-The default runnable path uses a **tiny synthetic dataset**. That path exists to verify:
+The default runnable path uses a **tiny synthetic dataset**. It exists to verify:
 - config loading,
 - dataset construction,
 - mask/timestamp handling,
@@ -48,15 +48,15 @@ It is a pipeline smoke test, **not** a meaningful HAR benchmark.
 This repo includes starter loaders for PAMAP2 and WISDM, but:
 - the datasets are **not bundled**,
 - preprocessing assumptions are still **starter assumptions**,
-- evaluation protocol details should be checked before using results in a paper.
+- evaluation protocol details should be checked before using results in serious reporting.
 
 ### GPU presets
-The GPU configs included here are deliberately modest and readable. They are meant for:
+The included GPU configs are deliberately readable and conservative enough to start from. They are meant for:
 - getting onto CUDA quickly,
-- reducing the chance of first-run friction,
-- giving you a safe and a faster preset to iterate from.
+- reducing first-run friction,
+- giving you a safe preset and a faster preset to iterate from.
 
-They are **not** presented as optimal settings.
+They are **not** presented as tuned benchmark recipes.
 
 ## Quick start (CPU smoke path)
 
@@ -71,7 +71,8 @@ python3 scripts/train.py --config configs/base.yaml
 Expected result:
 - a short CPU-friendly run,
 - metrics printed to stdout,
-- `outputs/default/results.json` written.
+- `outputs/default/results.json` written,
+- `outputs/default/runtime_info.json` written.
 
 ## Dataset layouts
 
@@ -110,7 +111,7 @@ python3 scripts/train.py --config configs/wisdm.yaml
 
 If files are missing, `scripts/train.py` fails with a direct, honest message.
 
-## GPU setup for RTX 4090D + CUDA 11.8
+## GPU setup
 
 Use Python 3.10 or 3.11 if possible.
 
@@ -140,7 +141,7 @@ if torch.cuda.is_available():
 PY
 ```
 
-## One-command GPU runs
+## Foreground GPU runs
 
 ### PAMAP2
 
@@ -156,7 +157,105 @@ bash scripts/run_wisdm_gpu.sh safe
 bash scripts/run_wisdm_gpu.sh fast
 ```
 
-If you omit the argument, each script defaults to `safe`.
+If you omit the mode argument, each script defaults to `safe`.
+
+## Background / tmux-friendly GPU runs
+
+For longer runs, use the generic launcher or the dataset wrappers in `background` mode.
+
+### Generic launcher
+
+```bash
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-safe.yaml
+bash scripts/run_gpu_background.sh --config configs/wisdm-gpu-fast.yaml --run-name wisdm-fast
+```
+
+By default this will:
+- create a timestamped run directory under the config’s `logging.output_dir`,
+- start training with `nohup ... &`,
+- write stdout/stderr to `train.log`,
+- save the PID to `run.pid`.
+
+### Dataset-specific background runs
+
+```bash
+bash scripts/run_pamap2_gpu.sh safe background
+bash scripts/run_pamap2_gpu.sh fast background
+
+bash scripts/run_wisdm_gpu.sh safe background
+bash scripts/run_wisdm_gpu.sh fast background
+```
+
+This is intentionally shell-friendly: it works in a plain terminal, inside `tmux`, or over SSH.
+
+## What gets logged for each run
+
+Every training run now writes `runtime_info.json` in the output directory.
+
+Typical fields include:
+- run status (`running`, `completed`, or `failed`),
+- UTC timestamp,
+- config path,
+- output directory,
+- current working directory,
+- hostname,
+- Python/platform info,
+- process PID and argv,
+- `CUDA_VISIBLE_DEVICES`,
+- torch version,
+- CUDA / cuDNN visibility,
+- visible GPU names and counts,
+- git commit / short commit / branch if available.
+
+Results are still written to `results.json`.
+
+## Example long-run workflow
+
+### Safe PAMAP2 run
+
+```bash
+bash scripts/run_pamap2_gpu.sh safe background
+```
+
+Then monitor it with:
+
+```bash
+tail -f outputs/pamap2-gpu-safe/<timestamp>-pamap2-safe/train.log
+cat outputs/pamap2-gpu-safe/<timestamp>-pamap2-safe/runtime_info.json
+```
+
+### Fast WISDM run
+
+```bash
+bash scripts/run_wisdm_gpu.sh fast background
+```
+
+Or launch directly with a custom run name:
+
+```bash
+bash scripts/run_gpu_background.sh \
+  --config configs/wisdm-gpu-fast.yaml \
+  --run-name wisdm-fast-1gpu
+```
+
+## Running directly without helper scripts
+
+You can still run training directly:
+
+```bash
+python3 scripts/train.py --config configs/pamap2-gpu-safe.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-fast.yaml
+python3 scripts/train.py --config configs/wisdm-gpu-safe.yaml
+python3 scripts/train.py --config configs/wisdm-gpu-fast.yaml
+```
+
+If you want a custom output directory for a run:
+
+```bash
+python3 scripts/train.py \
+  --config configs/pamap2-gpu-safe.yaml \
+  --output-dir outputs/manual/pamap2-safe-test
+```
 
 ## GPU config presets
 
@@ -186,16 +285,7 @@ Backward-compatible default GPU configs also remain:
 
 If the fast preset runs out of memory or becomes unstable, step back to the safe preset first.
 
-## Running directly without helper scripts
-
-```bash
-python3 scripts/train.py --config configs/pamap2-gpu-safe.yaml
-python3 scripts/train.py --config configs/pamap2-gpu-fast.yaml
-python3 scripts/train.py --config configs/wisdm-gpu-safe.yaml
-python3 scripts/train.py --config configs/wisdm-gpu-fast.yaml
-```
-
-## Current model/baseline summary
+## Current model / baseline summary
 
 The current baseline includes:
 - a small dataset factory,
@@ -236,7 +326,7 @@ Try, in order:
 3. Add subject-wise split controls
 4. Add stronger alignment baselines beyond nearest-neighbor
 5. Add more robust fusion and missing-modality baselines
-6. Add real experiment tracking
+6. Add real experiment tracking if the project grows beyond shell logs + JSON metadata
 
 ## License
 

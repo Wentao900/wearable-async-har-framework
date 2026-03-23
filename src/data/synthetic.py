@@ -101,11 +101,26 @@ class SyntheticWearableDataset(BaseWearableDataset, Dataset):
         return {"train": 0, "val": 10_000, "test": 20_000}.get(self.split, 30_000)
 
 
+def _to_tensor(x):
+    if isinstance(x, torch.Tensor):
+        return x
+    return torch.as_tensor(x)
+
+
 def collate_sensor_batch(batch: List[Dict]) -> Dict[str, Dict[str, torch.Tensor] | torch.Tensor | List[Dict]]:
     modalities = batch[0]["values"].keys()
-    values = {modality: torch.stack([item["values"][modality] for item in batch], dim=0) for modality in modalities}
-    timestamps = {modality: torch.stack([item["timestamps"][modality] for item in batch], dim=0) for modality in modalities}
-    masks = {modality: torch.stack([item["masks"][modality] for item in batch], dim=0) for modality in modalities}
+    values = {
+        modality: torch.stack([_to_tensor(item["values"][modality]) for item in batch], dim=0)
+        for modality in modalities
+    }
+    timestamps = {
+        modality: torch.stack([_to_tensor(item["timestamps"][modality]) for item in batch], dim=0)
+        for modality in modalities
+    }
+    masks = {
+        modality: torch.stack([_to_tensor(item["masks"][modality]) for item in batch], dim=0)
+        for modality in modalities
+    }
     labels = torch.tensor([item["label"] for item in batch], dtype=torch.long)
     metadata = [item["metadata"] for item in batch]
     return {

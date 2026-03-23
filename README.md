@@ -10,6 +10,7 @@ It already includes:
 - a minimal PyTorch baseline,
 - conservative starter adapters for **PAMAP2** and **WISDM**,
 - a configurable async alignment baseline,
+- GPU starter configs for CUDA environments,
 - review/framework documents for evolving the repo into a stronger benchmark or paper codebase later.
 
 It does **not** yet claim a finalized benchmark pipeline.
@@ -27,9 +28,9 @@ This repo is organized around that gap: **asynchronous multimodal fusion**, not 
 
 ## Repo contents
 
-- **docs/**: research framing, review notes, method design, experiment plan, and release notes
+- **docs/**: research framing, review notes, method design, experiment plan, release notes, and GPU setup notes
 - **src/**: runnable synthetic scaffold plus conservative starter dataset loaders
-- **configs/**: example experiment configurations
+- **configs/**: example experiment configurations for CPU and GPU starter runs
 - **scripts/**: convenience entrypoints
 - **tests/**: smoke tests
 - **CITATION.cff**: citation metadata
@@ -49,6 +50,10 @@ PAMAP2 and WISDM are wired into the training path too, but with the same honesty
 - the repo does **not** ship those datasets,
 - `src/data/pamap2.py` and `src/data/wisdm.py` are **starter adapters**, not finalized preprocessing recipes,
 - file parsing assumptions, column mappings, and evaluation protocols should be verified before using results in a paper.
+
+GPU support is also a **starter path**:
+- this repo now includes GPU-oriented configs,
+- but GPU availability does not magically make the dataset protocol paper-ready.
 
 ## Minimal baseline included
 
@@ -151,16 +156,35 @@ WISDM caveats for this repo:
 - only accelerometer is used in the initial scaffold
 - parsing assumptions should be verified against the exact WISDM release you use before reporting results
 
+## Run on GPU
+
+For an **RTX 4090D + CUDA 11.8** style environment, starter GPU configs are included:
+- `configs/pamap2-gpu.yaml`
+- `configs/wisdm-gpu.yaml`
+
+Install the CUDA 11.8 PyTorch build first:
+
+```bash
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+pip install -r requirements.txt
+```
+
+Then run:
+
+```bash
+python3 scripts/train.py --config configs/pamap2-gpu.yaml
+python3 scripts/train.py --config configs/wisdm-gpu.yaml
+```
+
+See `docs/gpu-setup.md` for a more complete GPU setup note.
+
 ## Configuration
 
-Three example configs are included:
-- `configs/base.yaml` → synthetic CPU smoke run
-- `configs/pamap2.yaml` → PAMAP2 starter run
-- `configs/wisdm.yaml` → WISDM starter run
-
-Both real-dataset starter configs keep CPU compatibility by default with:
-- `runtime.device: cpu`
-- `runtime.num_workers: 0`
+Example configs are included for:
+- synthetic CPU smoke runs
+- PAMAP2 starter runs
+- WISDM starter runs
+- GPU starter runs for PAMAP2 and WISDM
 
 The training path currently supports:
 - `data.dataset: synthetic`

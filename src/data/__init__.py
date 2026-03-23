@@ -8,9 +8,13 @@ __all__ = [
     "SensorSample",
     "DatasetConfigurationError",
     "PAMAP2Dataset",
+    "WISDMDataset",
     "SyntheticWearableDataset",
     "collate_sensor_batch",
     "create_dataloaders",
     "create_pamap2_dataloaders",
+    "create_wisdm_dataloaders",
     "create_synthetic_dataloaders",
+]
+s",
 ]

@@ -99,3 +99,42 @@ def test_train_script_reports_missing_pamap2_data(tmp_path):
 
     assert result.returncode == 1
     assert "PAMAP2 dataset files were not found" in result.stderr
+
+
+def test_train_script_reports_missing_wisdm_data(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    config_path = tmp_path / "missing-wisdm.yaml"
+    config_path.write_text(
+        "\n".join(
+            [
+                "data:",
+                "  dataset: wisdm",
+                "  root: missing/WISDM",
+                "  window_size: 16",
+                "  stride: 8",
+                "  modalities:",
+                "    - accelerometer",
+                "model:",
+                "  hidden_dim: 16",
+                "  num_classes: 6",
+                "training:",
+                "  batch_size: 2",
+                "  epochs: 1",
+                "runtime:",
+                "  device: cpu",
+                "  num_workers: 0",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, str(root / "scripts" / "train.py"), "--config", str(config_path)],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "WISDM dataset file was not found" in result.stderr

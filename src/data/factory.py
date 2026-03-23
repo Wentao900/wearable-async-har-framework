@@ -40,12 +40,41 @@ def create_pamap2_dataloaders(config: Dict) -> Tuple[Dict[str, DataLoader], Dict
     return dataloaders, train_ds.channels_per_modality()
 
 
+def create_wisdm_dataloaders(config: Dict) -> Tuple[Dict[str, DataLoader], Dict[str, int]]:
+    data_cfg = config.get("data", {})
+    training_cfg = config.get("training", {})
+    runtime_cfg = config.get("runtime", {})
+
+    common_kwargs = {
+        "root": data_cfg.get("root", "data/WISDM"),
+        "window_size": int(data_cfg.get("window_size", 128)),
+        "stride": int(data_cfg.get("stride", 64)),
+        "modalities": data_cfg.get("modalities", ["accelerometer"]),
+    }
+
+    train_ds = WISDMDataset(split="train", **common_kwargs)
+    val_ds = WISDMDataset(split="val", **common_kwargs)
+    test_ds = WISDMDataset(split="test", **common_kwargs)
+
+    batch_size = int(training_cfg.get("batch_size", 16))
+    num_workers = int(runtime_cfg.get("num_workers", 0))
+
+    dataloaders = {
+        "train": DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers, collate_fn=collate_sensor_batch),
+        "val": DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=collate_sensor_batch),
+        "test": DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers, collate_fn=collate_sensor_batch),
+    }
+    return dataloaders, train_ds.channels_per_modality()
+
+
 def create_dataloaders(config: Dict) -> Tuple[Dict[str, DataLoader], Dict[str, int]]:
     dataset_name = str(config.get("data", {}).get("dataset", "synthetic")).lower()
     if dataset_name == "synthetic":
         return create_synthetic_dataloaders(config)
     if dataset_name == "pamap2":
         return create_pamap2_dataloaders(config)
+    if dataset_name == "wisdm":
+        return create_wisdm_dataloaders(config)
     raise DatasetConfigurationError(
-        f"Unsupported dataset '{dataset_name}'. Expected one of: synthetic, pamap2."
+        f"Unsupported dataset '{dataset_name}'. Expected one of: synthetic, pamap2, wisdm."
     )

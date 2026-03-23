@@ -8,8 +8,8 @@ This is an **early public scaffold** for a research repo.
 It already includes:
 - a CPU-friendly synthetic training path,
 - a minimal PyTorch baseline,
-- a conservative PAMAP2 starter adapter,
-- review/framework documents for turning the repo into a paper or full benchmark later.
+- conservative starter adapters for **PAMAP2** and **WISDM**,
+- review/framework documents for evolving the repo into a stronger benchmark or paper codebase later.
 
 It does **not** yet claim a finalized benchmark pipeline.
 
@@ -26,15 +26,16 @@ This repo is organized around that gap: **asynchronous multimodal fusion**, not 
 
 ## Repo contents
 
-- **docs/**: research framing, review notes, method design, and experiment plan
-- **src/**: starter code for a runnable synthetic scaffold plus a conservative PAMAP2 loader path
+- **docs/**: research framing, review notes, method design, experiment plan, and release notes
+- **src/**: runnable synthetic scaffold plus conservative starter dataset loaders
 - **configs/**: example experiment configurations
 - **scripts/**: convenience entrypoints
 - **tests/**: smoke tests
+- **CITATION.cff**: citation metadata
 
 ## Important honesty note
 
-The runnable default path uses a **tiny synthetic dataset**. It exists only to verify that the project wiring works end-to-end on CPU:
+The default runnable path uses a **tiny synthetic dataset**. It exists only to verify that the project wiring works end-to-end on CPU:
 - config loading,
 - dataset/dataloader creation,
 - explicit masks/timestamps,
@@ -43,16 +44,17 @@ The runnable default path uses a **tiny synthetic dataset**. It exists only to v
 
 It is **not** a real HAR benchmark, and any metrics produced by this scaffold should be treated only as a pipeline smoke test.
 
-PAMAP2 is now wired into the training path too, but with the same honesty:
-- the repo does **not** ship PAMAP2 data,
-- `src/data/pamap2.py` is a **starter adapter**, not a finalized preprocessing recipe,
-- column choices and preprocessing should still be verified against the official dataset documentation before using results in a paper.
+PAMAP2 and WISDM are wired into the training path too, but with the same honesty:
+- the repo does **not** ship those datasets,
+- `src/data/pamap2.py` and `src/data/wisdm.py` are **starter adapters**, not finalized preprocessing recipes,
+- file parsing assumptions, column mappings, and evaluation protocols should be verified before using results in a paper.
 
 ## Minimal baseline included
 
-The repo now includes:
+The repo includes:
 - a synthetic dataset adapter under `src/data/synthetic.py`
 - a PAMAP2 dataset path under `src/data/pamap2.py`
+- a WISDM dataset path under `src/data/wisdm.py`
 - a small dataset factory under `src/data/factory.py`
 - a simple mask-aware alignment stub
 - per-modality PyTorch encoders
@@ -101,26 +103,49 @@ Training command:
 python3 scripts/train.py --config configs/pamap2.yaml
 ```
 
-If the raw files are missing, `train.py` now fails clearly with an honest message instead of pretending the dataset is ready.
+If the raw files are missing, `train.py` fails clearly with an honest message.
 
 PAMAP2 caveats for this repo:
 - only a small subset of modalities is currently used (`accelerometer`, `gyroscope`)
 - the adapter builds fixed windows directly from raw subject files
 - this is enough for a clean training path, but not enough to claim finalized benchmark preprocessing
 
+## Run the WISDM path
+
+Expected raw-data layout:
+
+```bash
+data/WISDM/WISDM_ar_v1.1_raw.txt
+```
+
+Training command:
+
+```bash
+python3 scripts/train.py --config configs/wisdm.yaml
+```
+
+If the raw file is missing, `train.py` fails clearly with an honest message.
+
+WISDM caveats for this repo:
+- this starter adapter assumes a common raw text format with CSV-like rows
+- only accelerometer is used in the initial scaffold
+- parsing assumptions should be verified against the exact WISDM release you use before reporting results
+
 ## Configuration
 
-Two example configs are included:
+Three example configs are included:
 - `configs/base.yaml` → synthetic CPU smoke run
 - `configs/pamap2.yaml` → PAMAP2 starter run
+- `configs/wisdm.yaml` → WISDM starter run
 
-Both keep CPU compatibility by default with:
+Both real-dataset starter configs keep CPU compatibility by default with:
 - `runtime.device: cpu`
 - `runtime.num_workers: 0`
 
 The training path currently supports:
 - `data.dataset: synthetic`
 - `data.dataset: pamap2`
+- `data.dataset: wisdm`
 
 ## Tests
 
@@ -135,14 +160,16 @@ These tests cover:
 - synthetic training smoke run
 - a tiny fake-PAMAP2 dataloader smoke run
 - honest failure when PAMAP2 data is missing
+- honest failure when WISDM data is missing
 
 ## Suggested next steps
 
 1. Verify and refine the PAMAP2 column mapping in `src/data/pamap2.py`
-2. Add subject-wise split controls instead of the current simple file split
-3. Replace the alignment stub with a real asynchronous alignment method
-4. Expand the baseline family (e.g. GRU / transformer / missing-modality robustness)
-5. Add proper experiment tracking and dataset-specific evaluation
+2. Verify the WISDM parsing assumptions against the exact raw release being used
+3. Add subject-wise split controls instead of the current simple file split
+4. Replace the alignment stub with a real asynchronous alignment method
+5. Expand the baseline family (e.g. GRU / transformer / missing-modality robustness)
+6. Add proper experiment tracking and dataset-specific evaluation
 
 ## Candidate datasets
 
@@ -162,4 +189,4 @@ These tests cover:
 
 ## License
 
-MIT (or your preferred license — not set yet)
+MIT

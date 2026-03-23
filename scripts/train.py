@@ -35,6 +35,15 @@ def main() -> int:
             )
             print(f"Details: {exc}", file=sys.stderr)
             return 1
+        if dataset_name == "wisdm":
+            print(
+                "WISDM dataset file was not found. "
+                "Expected a raw file like data/WISDM/WISDM_ar_v1.1_raw.txt. "
+                "This repo includes only a starter loader, not bundled WISDM data.",
+                file=sys.stderr,
+            )
+            print(f"Details: {exc}", file=sys.stderr)
+            return 1
         raise
     except (DatasetConfigurationError, ValueError) as exc:
         print(f"Training could not start: {exc}", file=sys.stderr)

@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+title: wearable-async-har-framework
+message: "If you use this repository, please cite it using the metadata below."
+type: software
+authors:
+  - family-names: Yau
+    given-names: Wentao
+    alias: Wentao900
+repository-code: "https://github.com/Wentao900/wearable-async-har-framework"
+license: MIT
+abstract: >-
+  A review-and-framework repository for asynchronous multimodal fusion in
+  wearable human activity recognition, including a CPU-friendly synthetic
+  baseline and conservative starter adapters for real datasets.
+keywords:
+  - wearable HAR
+  - multimodal time series
+  - asynchronous fusion
+  - sensor fusion
+  - PAMAP2
+  - WISDM
+version: 0.1.0

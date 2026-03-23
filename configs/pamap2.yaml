@@ -27,7 +27,7 @@ model:
   reference_timeline_strategy: densest
   use_timestamp_embedding: false
   use_missingness_mask: true
-  num_classes: 13
+  num_classes: 18
 
 training:
   batch_size: 16

@@ -47,6 +47,27 @@ class PAMAP2Dataset(BaseWearableDataset):
         "gyroscope": [10, 11, 12],
     }
 
+    LABEL_MAP = {
+        1: 0,
+        2: 1,
+        3: 2,
+        4: 3,
+        5: 4,
+        6: 5,
+        7: 6,
+        9: 7,
+        10: 8,
+        11: 9,
+        12: 10,
+        13: 11,
+        16: 12,
+        17: 13,
+        18: 14,
+        19: 15,
+        20: 16,
+        24: 17,
+    }
+
     def __init__(
         self,
         root: str | Path,
@@ -178,12 +199,13 @@ class PAMAP2Dataset(BaseWearableDataset):
             return []
 
         timestamps = data[:, 0]
-        labels = data[:, 1].astype(int)
+        raw_labels = data[:, 1].astype(int)
 
-        valid = labels > 0
+        valid = np.isin(raw_labels, list(self.LABEL_MAP.keys()))
         data = data[valid]
         timestamps = timestamps[valid]
-        labels = labels[valid]
+        raw_labels = raw_labels[valid]
+        labels = np.array([self.LABEL_MAP[int(x)] for x in raw_labels], dtype=int)
         if len(data) < self.window_size:
             return []
 

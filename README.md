@@ -9,7 +9,8 @@ This repository is an **early framework**, not a polished benchmark release. It 
 - starter dataset adapters for **PAMAP2** and **WISDM**,
 - a lightweight PyTorch baseline with timestamp-aware alignment,
 - CPU and GPU example configs,
-- simple scripts for launching and logging experiments.
+- simple scripts for launching and logging experiments,
+- minimal best-checkpoint and early-stopping support for validation-driven runs.
 
 It is meant to help you get experiments moving without pretending the recipes are already tuned or paper-ready.
 
@@ -17,10 +18,12 @@ It is meant to help you get experiments moving without pretending the recipes ar
 
 This repo includes a practical GPU starter path for **CUDA 11.8 / RTX-class NVIDIA machines**:
 - `requirements-gpu.txt` for a straightforward install,
-- **safe** and **fast** GPU presets for PAMAP2 and WISDM,
+- **safe**, **fast**, and explicit **split-comparison** GPU presets for PAMAP2,
+- safe and fast GPU presets for WISDM,
 - dataset-specific helper scripts,
 - a generic background launcher for long runs,
-- automatic runtime metadata logging into each run directory.
+- automatic runtime metadata logging into each run directory,
+- optional best-checkpoint saving and simple early stopping.
 
 These are **starter configs**, not claims of optimal performance.
 
@@ -50,13 +53,13 @@ This repo includes starter loaders for PAMAP2 and WISDM, but:
 - preprocessing assumptions are still **starter assumptions**,
 - evaluation protocol details should be checked before using results in serious reporting.
 
-For **PAMAP2 specifically**, subject-wise splitting is now configurable from YAML. That is useful for reproducible experiments, but it is still just a **configurable starter split mechanism**. The example subject lists in this repo are not presented as a paper-standard protocol.
+For **PAMAP2 specifically**, subject-wise splitting is configurable from YAML. That is useful for reproducible experiments, but it is still just a **configurable starter split mechanism**. The example subject lists in this repo are not presented as a paper-standard protocol.
 
 ### GPU presets
 The included GPU configs are deliberately readable and conservative enough to start from. They are meant for:
 - getting onto CUDA quickly,
 - reducing first-run friction,
-- giving you a safe preset and a faster preset to iterate from.
+- giving you a safe preset, a faster preset, and a couple of explicit split variants to compare.
 
 They are **not** presented as tuned benchmark recipes.
 
@@ -119,6 +122,21 @@ Behavior is intentionally simple:
 
 This is convenient for controlled experiments, but it should be described honestly in any report: it is a **configurable starter subject split**, not a claimed canonical PAMAP2 protocol.
 
+#### Included PAMAP2 GPU split variants
+
+Two explicit comparison configs are included so you can run quick subject-split comparisons without editing YAML first:
+
+- `configs/pamap2-gpu-split-a.yaml`
+  - train: `101, 102, 103, 104, 105, 106`
+  - val: `107`
+  - test: `108, 109`
+- `configs/pamap2-gpu-split-b.yaml`
+  - train: `101, 102, 104, 105, 107, 108`
+  - val: `106`
+  - test: `103, 109`
+
+These are meant to be **practical starter comparisons**, not canonical protocol claims.
+
 ### WISDM
 Expected raw-data layout:
 
@@ -171,6 +189,8 @@ PY
 ```bash
 bash scripts/run_pamap2_gpu.sh safe
 bash scripts/run_pamap2_gpu.sh fast
+python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
 ```
 
 ### WISDM
@@ -190,6 +210,8 @@ For longer runs, use the generic launcher or the dataset wrappers in `background
 
 ```bash
 bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-safe.yaml
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-a.yaml --run-name pamap2-split-a
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-b.yaml --run-name pamap2-split-b
 bash scripts/run_gpu_background.sh --config configs/wisdm-gpu-fast.yaml --run-name wisdm-fast
 ```
 
@@ -211,9 +233,55 @@ bash scripts/run_wisdm_gpu.sh fast background
 
 This is intentionally shell-friendly: it works in a plain terminal, inside `tmux`, or over SSH.
 
+## Best checkpoint and early stopping
+
+Training now supports a small, explicit validation-driven control block in YAML:
+
+```yaml
+training:
+  epochs: 20
+  checkpoint:
+    save_best: true
+    monitor: val_accuracy
+    filename: best_checkpoint.pt
+  early_stopping:
+    enabled: true
+    monitor: val_accuracy
+    mode: max
+    patience: 5
+    min_delta: 0.0
+```
+
+### Supported behavior
+
+- `checkpoint.save_best: true` saves the best validation checkpoint into the run output directory.
+- `checkpoint.monitor` and `early_stopping.monitor` currently expect validation metrics such as:
+  - `val_accuracy`
+  - `val_loss`
+- `early_stopping.mode` can be:
+  - `max` for metrics like accuracy
+  - `min` for metrics like loss
+- `patience` is the number of consecutive non-improving validation epochs tolerated before stopping.
+- `min_delta` is the minimum change required to count as a real improvement.
+
+This is intentionally minimal. It is not a full training-framework callback system.
+
+### Where results show up
+
+`results.json` now includes additional run summary fields when applicable:
+- `epochs_requested`
+- `epochs_completed`
+- `stopped_early`
+- `best.epoch`
+- `best.monitor`
+- `best.value`
+- `best.checkpoint_path`
+
+If a best checkpoint was saved, the trainer evaluates the test split using that restored best checkpoint rather than blindly using the last epoch.
+
 ## What gets logged for each run
 
-Every training run now writes `runtime_info.json` in the output directory.
+Every training run writes `runtime_info.json` in the output directory.
 
 Typical fields include:
 - run status (`running`, `completed`, or `failed`),
@@ -247,6 +315,23 @@ tail -f outputs/pamap2-gpu-safe/<timestamp>-pamap2-safe/train.log
 cat outputs/pamap2-gpu-safe/<timestamp>-pamap2-safe/runtime_info.json
 ```
 
+### Split comparison workflow
+
+```bash
+python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
+```
+
+Then compare:
+- `outputs/pamap2-gpu-split-a/results.json`
+- `outputs/pamap2-gpu-split-b/results.json`
+
+Look especially at:
+- `best.epoch`
+- `best.value`
+- `stopped_early`
+- final test metrics
+
 ### Fast WISDM run
 
 ```bash
@@ -268,6 +353,8 @@ You can still run training directly:
 ```bash
 python3 scripts/train.py --config configs/pamap2-gpu-safe.yaml
 python3 scripts/train.py --config configs/pamap2-gpu-fast.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
 python3 scripts/train.py --config configs/wisdm-gpu-safe.yaml
 python3 scripts/train.py --config configs/wisdm-gpu-fast.yaml
 ```
@@ -276,25 +363,25 @@ If you want a custom output directory for a run:
 
 ```bash
 python3 scripts/train.py \
-  --config configs/pamap2-gpu-safe.yaml \
-  --output-dir outputs/manual/pamap2-safe-test
+  --config configs/pamap2-gpu-split-a.yaml \
+  --output-dir outputs/manual/pamap2-split-a-test
 ```
 
 ## GPU config presets
 
 ### PAMAP2
 - `configs/pamap2.yaml`
+- `configs/pamap2-gpu.yaml`
 - `configs/pamap2-gpu-safe.yaml`
 - `configs/pamap2-gpu-fast.yaml`
-- `configs/pamap2-gpu.yaml`
+- `configs/pamap2-gpu-split-a.yaml`
+- `configs/pamap2-gpu-split-b.yaml`
 
-The PAMAP2 example configs now include explicit starter subject lists so the split is visible and editable in one place.
+The PAMAP2 example configs include explicit starter subject lists so the split is visible and editable in one place.
 
 ### WISDM
 - `configs/wisdm-gpu-safe.yaml`
 - `configs/wisdm-gpu-fast.yaml`
-
-Backward-compatible default GPU configs also remain:
 - `configs/wisdm-gpu.yaml`
 
 ### How to think about them
@@ -309,7 +396,12 @@ Backward-compatible default GPU configs also remain:
 - slightly larger hidden size and/or windowing,
 - meant for machines that have headroom.
 
-If the fast preset runs out of memory or becomes unstable, step back to the safe preset first.
+**Split comparison** presets:
+- keep the model recipe roughly fixed,
+- change subject partitions explicitly,
+- useful when you want a quick sense of split sensitivity before doing more serious protocol work.
+
+If a fast preset runs out of memory or becomes unstable, step back to the safe preset first.
 
 ## Current model / baseline summary
 
@@ -343,7 +435,8 @@ Try, in order:
 2. reduce `training.batch_size`,
 3. reduce `model.hidden_dim`,
 4. reduce `data.window_size`,
-5. lower `runtime.num_workers` if data loading is noisy.
+5. lower `runtime.num_workers` if data loading is noisy,
+6. disable early stopping first only if you are specifically debugging full-length runs.
 
 ## Suggested next steps
 

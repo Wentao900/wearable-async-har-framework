@@ -237,3 +237,83 @@ def test_train_script_writes_runtime_info_and_honors_output_override(tmp_path):
     assert runtime_info["config_summary"]["dataset"] == "synthetic"
     assert runtime_info["torch"]["version"] is not None
     assert results["status"] == "completed"
+
+
+class _FakeEvaluator:
+    def __init__(self, metrics_sequence):
+        self.metrics_sequence = list(metrics_sequence)
+        self.index = 0
+
+    def evaluate(self, model, dataloader):
+        metric = self.metrics_sequence[min(self.index, len(self.metrics_sequence) - 1)]
+        self.index += 1
+        return metric
+
+    def _move_batch_to_device(self, batch):
+        return batch
+
+
+def test_trainer_saves_best_checkpoint_and_reports_best_epoch(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    config = load_config(str(root / "configs" / "base.yaml"))
+    config["training"]["epochs"] = 3
+    config["logging"] = {"output_dir": str(tmp_path / "checkpoint-run")}
+    config["training"]["checkpoint"] = {
+        "save_best": True,
+        "monitor": "val_accuracy",
+        "filename": "best.pt",
+    }
+
+    trainer = Trainer(config)
+    trainer.evaluator = _FakeEvaluator(
+        [
+            {"loss": 1.0, "accuracy": 0.40},
+            {"loss": 0.9, "accuracy": 0.70},
+            {"loss": 1.1, "accuracy": 0.65},
+            {"loss": 0.8, "accuracy": 0.66},
+        ]
+    )
+
+    results = trainer.train()
+
+    assert results["best"]["epoch"] == 2
+    assert results["best"]["monitor"] == "val_accuracy"
+    assert results["best"]["value"] == 0.70
+    assert Path(results["best"]["checkpoint_path"]).exists()
+
+
+def test_trainer_can_stop_early_from_validation_metric(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    config = load_config(str(root / "configs" / "base.yaml"))
+    config["training"]["epochs"] = 6
+    config["logging"] = {"output_dir": str(tmp_path / "early-stop-run")}
+    config["training"]["checkpoint"] = {
+        "save_best": True,
+        "monitor": "val_accuracy",
+        "filename": "best.pt",
+    }
+    config["training"]["early_stopping"] = {
+        "enabled": True,
+        "monitor": "val_accuracy",
+        "mode": "max",
+        "patience": 1,
+        "min_delta": 0.0,
+    }
+
+    trainer = Trainer(config)
+    trainer.evaluator = _FakeEvaluator(
+        [
+            {"loss": 1.0, "accuracy": 0.50},
+            {"loss": 0.8, "accuracy": 0.60},
+            {"loss": 0.82, "accuracy": 0.59},
+            {"loss": 0.84, "accuracy": 0.58},
+            {"loss": 0.9, "accuracy": 0.57},
+        ]
+    )
+
+    results = trainer.train()
+
+    assert results["stopped_early"] is True
+    assert results["epochs_completed"] == 4
+    assert results["best"]["epoch"] == 2
+    assert results["best"]["value"] == 0.60

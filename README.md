@@ -63,7 +63,7 @@ The repo includes:
 - a classifier head
 - a train entry script that reads YAML configs
 
-## Alignment v1: what it actually does
+## Alignment v1
 
 The current async alignment module is intentionally modest.
 It is a **baseline**, not a claimed research contribution.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 
@@ -38,6 +38,8 @@ class PAMAP2Dataset(BaseWearableDataset):
     - PAMAP2 has many columns and several missing values.
     - This scaffold only extracts a small, explicit subset for a first baseline.
     - You should verify column mappings against the official dataset description before using it in a paper.
+    - Subject-wise splits in this scaffold are configurable from YAML, but they are starter controls,
+      not a claimed paper-standard evaluation protocol.
     """
 
     DEFAULT_MODALITY_COLUMNS = {
@@ -52,6 +54,9 @@ class PAMAP2Dataset(BaseWearableDataset):
         window_size: int = 256,
         stride: int = 128,
         modalities: Optional[List[str]] = None,
+        train_subjects: Optional[Iterable[int | str]] = None,
+        val_subjects: Optional[Iterable[int | str]] = None,
+        test_subjects: Optional[Iterable[int | str]] = None,
     ) -> None:
         super().__init__(split=split)
         self.root = Path(root)
@@ -59,6 +64,11 @@ class PAMAP2Dataset(BaseWearableDataset):
         self.stride = stride
         self.modalities_list = modalities or ["accelerometer", "gyroscope"]
         self.samples: List[PAMAP2Window] = []
+        self.subject_splits = {
+            "train": self._normalize_subject_ids(train_subjects),
+            "val": self._normalize_subject_ids(val_subjects),
+            "test": self._normalize_subject_ids(test_subjects),
+        }
 
         protocol_dir = self.root / "Protocol"
         if not protocol_dir.exists():
@@ -80,7 +90,8 @@ class PAMAP2Dataset(BaseWearableDataset):
         if not self.samples:
             raise ValueError(
                 "PAMAP2 scaffold loaded zero windows. "
-                "Check that the raw files exist and that window_size/stride are compatible with your data. "
+                "Check that the raw files exist, the configured subject split is not empty, "
+                "and that window_size/stride are compatible with your data. "
                 "This adapter is still a conservative starter pipeline, not finalized preprocessing."
             )
 
@@ -107,7 +118,47 @@ class PAMAP2Dataset(BaseWearableDataset):
             for modality in self.modalities_list
         }
 
+    def _normalize_subject_ids(
+        self, subjects: Optional[Iterable[int | str]]
+    ) -> Optional[List[int]]:
+        if subjects is None:
+            return None
+        normalized: List[int] = []
+        for subject in subjects:
+            subject_str = str(subject).strip()
+            if not subject_str:
+                continue
+            if subject_str.startswith("subject"):
+                subject_str = subject_str[len("subject") :]
+            if subject_str.endswith(".dat"):
+                subject_str = subject_str[: -len(".dat")]
+            normalized.append(int(subject_str))
+        return normalized
+
+    def _subject_id_from_file(self, file_path: Path) -> int:
+        name = file_path.stem
+        if not name.startswith("subject"):
+            raise ValueError(f"Unexpected PAMAP2 filename: {file_path.name}")
+        return int(name[len("subject") :])
+
+    def _uses_explicit_subject_splits(self) -> bool:
+        return any(subjects is not None for subjects in self.subject_splits.values())
+
     def _select_split(self, files: List[Path], split: str) -> List[Path]:
+        if self._uses_explicit_subject_splits():
+            requested_subjects = self.subject_splits.get(split)
+            if requested_subjects is None:
+                return []
+
+            file_map = {self._subject_id_from_file(path): path for path in files}
+            missing_subjects = [subject for subject in requested_subjects if subject not in file_map]
+            if missing_subjects:
+                raise ValueError(
+                    f"Configured PAMAP2 {split}_subjects include missing files for subjects: {missing_subjects}. "
+                    f"Available subjects: {sorted(file_map)}"
+                )
+            return [file_map[subject] for subject in requested_subjects]
+
         if len(files) < 3:
             return files
         n = len(files)
@@ -136,6 +187,7 @@ class PAMAP2Dataset(BaseWearableDataset):
         if len(data) < self.window_size:
             return []
 
+        subject_id = self._subject_id_from_file(file_path)
         windows: List[PAMAP2Window] = []
         for start in range(0, len(data) - self.window_size + 1, self.stride):
             end = start + self.window_size
@@ -166,6 +218,7 @@ class PAMAP2Dataset(BaseWearableDataset):
                     label=label,
                     metadata={
                         "dataset": "pamap2",
+                        "subject_id": subject_id,
                         "subject_file": file_path.name,
                         "split": self.split,
                         "start_index": start,

@@ -24,6 +24,9 @@ def create_pamap2_dataloaders(config: Dict) -> Tuple[Dict[str, DataLoader], Dict
         "window_size": int(data_cfg.get("window_size", 256)),
         "stride": int(data_cfg.get("stride", 128)),
         "modalities": modalities,
+        "train_subjects": data_cfg.get("train_subjects"),
+        "val_subjects": data_cfg.get("val_subjects"),
+        "test_subjects": data_cfg.get("test_subjects"),
     }
 
     train_ds = PAMAP2Dataset(split="train", **common_kwargs)

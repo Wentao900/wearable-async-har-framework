@@ -50,6 +50,8 @@ This repo includes starter loaders for PAMAP2 and WISDM, but:
 - preprocessing assumptions are still **starter assumptions**,
 - evaluation protocol details should be checked before using results in serious reporting.
 
+For **PAMAP2 specifically**, subject-wise splitting is now configurable from YAML. That is useful for reproducible experiments, but it is still just a **configurable starter split mechanism**. The example subject lists in this repo are not presented as a paper-standard protocol.
+
 ### GPU presets
 The included GPU configs are deliberately readable and conservative enough to start from. They are meant for:
 - getting onto CUDA quickly,
@@ -95,6 +97,27 @@ CPU starter run:
 ```bash
 python3 scripts/train.py --config configs/pamap2.yaml
 ```
+
+#### PAMAP2 subject split control
+
+You can control subject-wise splits directly in YAML:
+
+```yaml
+data:
+  dataset: pamap2
+  root: data/PAMAP2
+  train_subjects: [101, 102, 103, 104, 105, 106]
+  val_subjects: [107]
+  test_subjects: [108, 109]
+```
+
+Behavior is intentionally simple:
+- if any of `train_subjects`, `val_subjects`, or `test_subjects` are provided, the loader uses those explicit lists,
+- if they are all omitted, the loader falls back to the older automatic file-order split,
+- missing splits are treated as empty when explicit splitting is enabled,
+- subject IDs may be written as integers like `101` or strings like `subject101`.
+
+This is convenient for controlled experiments, but it should be described honestly in any report: it is a **configurable starter subject split**, not a claimed canonical PAMAP2 protocol.
 
 ### WISDM
 Expected raw-data layout:
@@ -260,15 +283,18 @@ python3 scripts/train.py \
 ## GPU config presets
 
 ### PAMAP2
+- `configs/pamap2.yaml`
 - `configs/pamap2-gpu-safe.yaml`
 - `configs/pamap2-gpu-fast.yaml`
+- `configs/pamap2-gpu.yaml`
+
+The PAMAP2 example configs now include explicit starter subject lists so the split is visible and editable in one place.
 
 ### WISDM
 - `configs/wisdm-gpu-safe.yaml`
 - `configs/wisdm-gpu-fast.yaml`
 
 Backward-compatible default GPU configs also remain:
-- `configs/pamap2-gpu.yaml`
 - `configs/wisdm-gpu.yaml`
 
 ### How to think about them
@@ -323,7 +349,7 @@ Try, in order:
 
 1. Verify PAMAP2 preprocessing assumptions in `src/data/pamap2.py`
 2. Verify WISDM parsing assumptions against the exact raw release in use
-3. Add subject-wise split controls
+3. Compare multiple explicit PAMAP2 subject splits instead of relying on a single starter split
 4. Add stronger alignment baselines beyond nearest-neighbor
 5. Add more robust fusion and missing-modality baselines
 6. Add real experiment tracking if the project grows beyond shell logs + JSON metadata

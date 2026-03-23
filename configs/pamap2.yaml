@@ -9,6 +9,11 @@ data:
   modalities:
     - accelerometer
     - gyroscope
+  # Starter subject-wise split control. Adjust these lists for your own experiments.
+  # If you remove them, the loader falls back to the older automatic file-order split.
+  train_subjects: [101, 102, 103, 104, 105, 106]
+  val_subjects: [107]
+  test_subjects: [108, 109]
   simulate_asynchrony: false
   timestamp_jitter_ms: 0
   packet_loss_prob: 0.0

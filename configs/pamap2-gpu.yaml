@@ -10,6 +10,10 @@ data:
   modalities:
     - accelerometer
     - gyroscope
+  # Same starter split control as the CPU config; change freely for your setup.
+  train_subjects: [101, 102, 103, 104, 105, 106]
+  val_subjects: [107]
+  test_subjects: [108, 109]
   simulate_asynchrony: false
   timestamp_jitter_ms: 0
   packet_loss_prob: 0.0

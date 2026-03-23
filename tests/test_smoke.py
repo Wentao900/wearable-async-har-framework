@@ -27,20 +27,25 @@ def test_synthetic_training_smoke():
     assert "test" in results
 
 
+def _write_dummy_pamap2_subject(protocol_dir, subject_idx, steps=40):
+    rows = []
+    for step in range(steps):
+        row = np.zeros(13, dtype=float)
+        row[0] = step * 0.01
+        row[1] = 1 + (step % 3)
+        row[4:7] = np.array([step, step + 1, step + 2], dtype=float)
+        row[10:13] = np.array([step + 3, step + 4, step + 5], dtype=float)
+        rows.append(row)
+    np.savetxt(protocol_dir / f"subject{subject_idx}.dat", np.vstack(rows), fmt="%.6f")
+
+
+
 def test_pamap2_dataloader_smoke(tmp_path):
     protocol_dir = tmp_path / "PAMAP2" / "Protocol"
     protocol_dir.mkdir(parents=True)
 
     for subject_idx in range(101, 104):
-        rows = []
-        for step in range(40):
-            row = np.zeros(13, dtype=float)
-            row[0] = step * 0.01
-            row[1] = 1 + (step % 3)
-            row[4:7] = np.array([step, step + 1, step + 2], dtype=float)
-            row[10:13] = np.array([step + 3, step + 4, step + 5], dtype=float)
-            rows.append(row)
-        np.savetxt(protocol_dir / f"subject{subject_idx}.dat", np.vstack(rows), fmt="%.6f")
+        _write_dummy_pamap2_subject(protocol_dir, subject_idx)
 
     config = {
         "data": {
@@ -60,6 +65,69 @@ def test_pamap2_dataloader_smoke(tmp_path):
     assert batch["values"]["accelerometer"].shape[1:] == (3, 16)
     assert batch["masks"]["accelerometer"].shape[1:] == (16,)
     assert batch["label"].ndim == 1
+
+
+
+def test_pamap2_explicit_subject_splits_override_automatic_split(tmp_path):
+    protocol_dir = tmp_path / "PAMAP2" / "Protocol"
+    protocol_dir.mkdir(parents=True)
+
+    for subject_idx in range(101, 106):
+        _write_dummy_pamap2_subject(protocol_dir, subject_idx)
+
+    config = {
+        "data": {
+            "dataset": "pamap2",
+            "root": str(tmp_path / "PAMAP2"),
+            "window_size": 16,
+            "stride": 8,
+            "modalities": ["accelerometer", "gyroscope"],
+            "train_subjects": [103, 105],
+            "val_subjects": [102],
+            "test_subjects": [101, 104],
+        },
+        "training": {"batch_size": 4},
+        "runtime": {"num_workers": 0},
+    }
+    dataloaders, _ = create_dataloaders(config)
+
+    train_subjects = set(dataloaders["train"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["train"].dataset)))
+    val_subjects = set(dataloaders["val"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["val"].dataset)))
+    test_subjects = set(dataloaders["test"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["test"].dataset)))
+
+    assert train_subjects == {103, 105}
+    assert val_subjects == {102}
+    assert test_subjects == {101, 104}
+
+
+
+def test_pamap2_automatic_split_still_works_without_explicit_subject_lists(tmp_path):
+    protocol_dir = tmp_path / "PAMAP2" / "Protocol"
+    protocol_dir.mkdir(parents=True)
+
+    for subject_idx in range(101, 106):
+        _write_dummy_pamap2_subject(protocol_dir, subject_idx)
+
+    config = {
+        "data": {
+            "dataset": "pamap2",
+            "root": str(tmp_path / "PAMAP2"),
+            "window_size": 16,
+            "stride": 8,
+            "modalities": ["accelerometer", "gyroscope"],
+        },
+        "training": {"batch_size": 4},
+        "runtime": {"num_workers": 0},
+    }
+    dataloaders, _ = create_dataloaders(config)
+
+    train_subjects = set(dataloaders["train"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["train"].dataset)))
+    val_subjects = set(dataloaders["val"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["val"].dataset)))
+    test_subjects = set(dataloaders["test"].dataset.samples[i].metadata["subject_id"] for i in range(len(dataloaders["test"].dataset)))
+
+    assert train_subjects == {101, 102, 103}
+    assert val_subjects == {104}
+    assert test_subjects == {105}
 
 
 def test_train_script_reports_missing_pamap2_data(tmp_path):

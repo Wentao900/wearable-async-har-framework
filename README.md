@@ -30,7 +30,7 @@ These are **starter configs**, not claims of optimal performance.
 ## Repo layout
 
 - `configs/` — YAML experiment configs for CPU and GPU runs
-- `docs/` — setup notes, framework docs, experiment ideas, release notes
+- `docs/` — setup notes, framework docs, experiment ideas, release notes, result templates
 - `scripts/` — training and convenience scripts
 - `src/` — data adapters, model code, training loop, config + runtime helpers
 - `tests/` — smoke tests
@@ -53,13 +53,13 @@ This repo includes starter loaders for PAMAP2 and WISDM, but:
 - preprocessing assumptions are still **starter assumptions**,
 - evaluation protocol details should be checked before using results in serious reporting.
 
-For **PAMAP2 specifically**, subject-wise splitting is configurable from YAML. That is useful for reproducible experiments, but it is still just a **configurable starter split mechanism**. The example subject lists in this repo are not presented as a paper-standard protocol.
+For **PAMAP2 specifically**, subject-wise splitting is configurable from YAML. That is useful for reproducible experiments, but it is still just a **configurable starter split mechanism**. The example subject lists in this repo are not presented as a paper-standard or canonical benchmark protocol.
 
 ### GPU presets
 The included GPU configs are deliberately readable and conservative enough to start from. They are meant for:
 - getting onto CUDA quickly,
 - reducing first-run friction,
-- giving you a safe preset, a faster preset, and a couple of explicit split variants to compare.
+- giving you a safe preset, a faster preset, and several explicit split variants to compare.
 
 They are **not** presented as tuned benchmark recipes.
 
@@ -124,7 +124,7 @@ This is convenient for controlled experiments, but it should be described honest
 
 #### Included PAMAP2 GPU split variants
 
-Two explicit comparison configs are included so you can run quick subject-split comparisons without editing YAML first:
+Five explicit comparison configs are included so you can run subject-split comparisons without editing YAML first:
 
 - `configs/pamap2-gpu-split-a.yaml`
   - train: `101, 102, 103, 104, 105, 106`
@@ -134,8 +134,25 @@ Two explicit comparison configs are included so you can run quick subject-split 
   - train: `101, 102, 104, 105, 107, 108`
   - val: `106`
   - test: `103, 109`
+- `configs/pamap2-gpu-split-c.yaml`
+  - train: `101, 102, 103, 104, 105`
+  - val: `106, 107`
+  - test: `108, 109`
+- `configs/pamap2-gpu-split-d.yaml`
+  - train: `101, 102, 104, 107, 108`
+  - val: `105, 106`
+  - test: `103, 109`
+- `configs/pamap2-gpu-split-e.yaml`
+  - train: `102, 103, 105, 106, 109`
+  - val: `107, 108`
+  - test: `101, 104`
 
-These are meant to be **practical starter comparisons**, not canonical protocol claims.
+The three newer configs (`split-c`, `split-d`, `split-e`) each use **two validation subjects** so validation is a bit less tied to one participant. They are still **practical starter comparisons**, not canonical protocol claims.
+
+A simple comparison sheet is also included at:
+- `docs/pamap2-results-template.md`
+
+That template is intentionally lightweight and explicitly calls out **split sensitivity** as something worth recording.
 
 ### WISDM
 Expected raw-data layout:
@@ -191,6 +208,9 @@ bash scripts/run_pamap2_gpu.sh safe
 bash scripts/run_pamap2_gpu.sh fast
 python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
 python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-c.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-d.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-e.yaml
 ```
 
 ### WISDM
@@ -212,6 +232,9 @@ For longer runs, use the generic launcher or the dataset wrappers in `background
 bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-safe.yaml
 bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-a.yaml --run-name pamap2-split-a
 bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-b.yaml --run-name pamap2-split-b
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-c.yaml --run-name pamap2-split-c
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-d.yaml --run-name pamap2-split-d
+bash scripts/run_gpu_background.sh --config configs/pamap2-gpu-split-e.yaml --run-name pamap2-split-e
 bash scripts/run_gpu_background.sh --config configs/wisdm-gpu-fast.yaml --run-name wisdm-fast
 ```
 
@@ -318,19 +341,23 @@ cat outputs/pamap2-gpu-safe/<timestamp>-pamap2-safe/runtime_info.json
 ### Split comparison workflow
 
 ```bash
-python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
-python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-c.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-d.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-e.yaml
 ```
 
 Then compare:
-- `outputs/pamap2-gpu-split-a/results.json`
-- `outputs/pamap2-gpu-split-b/results.json`
+- `outputs/pamap2-gpu-split-c/results.json`
+- `outputs/pamap2-gpu-split-d/results.json`
+- `outputs/pamap2-gpu-split-e/results.json`
+- `docs/pamap2-results-template.md`
 
 Look especially at:
 - `best.epoch`
 - `best.value`
 - `stopped_early`
 - final test metrics
+- whether different subject partitions materially change the conclusion
 
 ### Fast WISDM run
 
@@ -355,6 +382,9 @@ python3 scripts/train.py --config configs/pamap2-gpu-safe.yaml
 python3 scripts/train.py --config configs/pamap2-gpu-fast.yaml
 python3 scripts/train.py --config configs/pamap2-gpu-split-a.yaml
 python3 scripts/train.py --config configs/pamap2-gpu-split-b.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-c.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-d.yaml
+python3 scripts/train.py --config configs/pamap2-gpu-split-e.yaml
 python3 scripts/train.py --config configs/wisdm-gpu-safe.yaml
 python3 scripts/train.py --config configs/wisdm-gpu-fast.yaml
 ```
@@ -363,8 +393,8 @@ If you want a custom output directory for a run:
 
 ```bash
 python3 scripts/train.py \
-  --config configs/pamap2-gpu-split-a.yaml \
-  --output-dir outputs/manual/pamap2-split-a-test
+  --config configs/pamap2-gpu-split-c.yaml \
+  --output-dir outputs/manual/pamap2-split-c-test
 ```
 
 ## GPU config presets
@@ -376,6 +406,9 @@ python3 scripts/train.py \
 - `configs/pamap2-gpu-fast.yaml`
 - `configs/pamap2-gpu-split-a.yaml`
 - `configs/pamap2-gpu-split-b.yaml`
+- `configs/pamap2-gpu-split-c.yaml`
+- `configs/pamap2-gpu-split-d.yaml`
+- `configs/pamap2-gpu-split-e.yaml`
 
 The PAMAP2 example configs include explicit starter subject lists so the split is visible and editable in one place.
 
@@ -441,11 +474,12 @@ Try, in order:
 ## Suggested next steps
 
 1. Verify PAMAP2 preprocessing assumptions in `src/data/pamap2.py`
-2. Verify WISDM parsing assumptions against the exact raw release in use
-3. Compare multiple explicit PAMAP2 subject splits instead of relying on a single starter split
-4. Add stronger alignment baselines beyond nearest-neighbor
-5. Add more robust fusion and missing-modality baselines
-6. Add real experiment tracking if the project grows beyond shell logs + JSON metadata
+2. Compare multiple explicit PAMAP2 subject splits instead of relying on a single starter split
+3. Use `docs/pamap2-results-template.md` to keep split comparisons in one place
+4. Verify WISDM parsing assumptions against the exact raw release in use
+5. Add stronger alignment baselines beyond nearest-neighbor
+6. Add more robust fusion and missing-modality baselines
+7. Add real experiment tracking if the project grows beyond shell logs + JSON metadata
 
 ## License
 

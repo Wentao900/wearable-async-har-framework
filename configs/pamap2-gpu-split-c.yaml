@@ -1,0 +1,54 @@
+project:
+  name: wearable-async-har-framework
+
+data:
+  dataset: pamap2
+  root: data/PAMAP2
+  # Split C: balanced 5/2/2 starter split with two validation subjects.
+  # Useful when you want validation to reflect more than a single participant.
+  window_size: 256
+  stride: 128
+  modalities:
+    - accelerometer
+    - gyroscope
+  train_subjects: [101, 102, 103, 104, 105]
+  val_subjects: [106, 107]
+  test_subjects: [108, 109]
+  simulate_asynchrony: false
+  timestamp_jitter_ms: 0
+  packet_loss_prob: 0.0
+  seed: 7
+
+model:
+  encoder: tcn
+  hidden_dim: 128
+  fusion: gated
+  alignment_strategy: nearest-neighbor
+  reference_timeline_strategy: densest
+  use_timestamp_embedding: false
+  use_missingness_mask: true
+  num_classes: 18
+
+training:
+  batch_size: 128
+  epochs: 20
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  modality_dropout_prob: 0.0
+  checkpoint:
+    save_best: true
+    monitor: val_accuracy
+    filename: best_checkpoint.pt
+  early_stopping:
+    enabled: true
+    monitor: val_accuracy
+    mode: max
+    patience: 5
+    min_delta: 0.0
+
+runtime:
+  device: cuda
+  num_workers: 8
+
+logging:
+  output_dir: outputs/pamap2-gpu-split-c
